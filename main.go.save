@@ -1,0 +1,28 @@
+package main
+
+import (
+	"log"
+	"net/http"
+)
+
+func main() {
+	mux := http.NewServeMux()
+
+	// /app  (serves from ".")
+	app := http.StripPrefix("/app", http.FileServer(http.Dir(".")))
+	mux.Handle("GET /app", app)           // exact /app
+	mux.Handle("GET /app/{rest...}", app) // /app/...
+
+	// /app/assets  (serves from "./assets")
+	assets := http.StripPrefix("/app/assets", http.FileServer(http.Dir("./assets")))
+	mux.Handle("GET /app/assets", assets)           // exact /app/assets
+	mux.Handle("GET /app/assets/{rest...}", assets) // /app/assets/...
+
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(200)
+		w.Write([]byte("OK"))
+	})
+
+	log.Fatal(http.ListenAndServe("0.0.0.0:8080", mux))
+}
