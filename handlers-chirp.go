@@ -10,6 +10,33 @@ import (
 	"github.com/mattcollier/boot-go-server/internal/database"
 )
 
+func (cfg *apiConfig) handleGetAllChirps(w http.ResponseWriter, r *http.Request) {
+	chirp, err := cfg.db.GetAllChirps(r.Context())
+	if err != nil {
+		// an error will be thrown if the JSON is invalid or has the wrong types
+		// any missing fields will simply have their values in the struct set to their zero value
+		log.Printf("Error getting chirps: %s", err)
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(500)
+		w.Write([]byte(`{"error":"Something went wrong"}`))
+		return
+	}
+
+	jsonChirps, err := json.Marshal(chirp)
+	if err != nil {
+		// an error will be thrown if the JSON is invalid or has the wrong types
+		// any missing fields will simply have their values in the struct set to their zero value
+		log.Printf("Error encoding chirps: %s", err)
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(500)
+		w.Write([]byte(`{"error":"Something went wrong"}`))
+		return
+	}
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(201)
+	w.Write(jsonChirps)
+}
+
 func (cfg *apiConfig) handleChirps(w http.ResponseWriter, r *http.Request) {
 	type messageBody struct {
 		Body   string        `json:"body"`
