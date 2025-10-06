@@ -9,9 +9,7 @@ import (
 	"os"
 	"strings"
 	"sync/atomic"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/mattcollier/boot-go-server/internal/database"
@@ -66,12 +64,6 @@ func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	type payload struct {
 		Email string `json:"email"`
 	}
-	type myUser struct {
-		ID        uuid.UUID `json:"id"`
-		CreatedAt time.Time `json:"created_at"`
-		UpdatedAt time.Time `json:"updated_at"`
-		Email     string    `json:"email"`
-	}
 
 	decoder := json.NewDecoder(r.Body)
 	p := payload{}
@@ -91,14 +83,7 @@ func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	// move data into a properly tagged struct
-	taggedUser := myUser{}
-	taggedUser.ID = user.ID
-	taggedUser.CreatedAt = user.CreatedAt
-	taggedUser.UpdatedAt = user.UpdatedAt
-	taggedUser.Email = user.Email
-
-	jsonUser, err := json.Marshal(taggedUser)
+	jsonUser, err := json.Marshal(user)
 	if err != nil {
 		// an error will be thrown if the JSON is invalid or has the wrong types
 		// any missing fields will simply have their values in the struct set to their zero value

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/mattcollier/boot-go-server/internal/database"
@@ -33,7 +32,7 @@ func (cfg *apiConfig) handleGetAllChirps(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(201)
+	w.WriteHeader(200)
 	w.Write(jsonChirps)
 }
 
@@ -70,23 +69,7 @@ func (cfg *apiConfig) handleChirps(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	type myChirp struct {
-		ID        uuid.UUID     `json:"id"`
-		CreatedAt time.Time     `json:"created_at"`
-		UpdatedAt time.Time     `json:"updated_at"`
-		Body      string        `json:"body"`
-		UserID    uuid.NullUUID `json:"user_id"`
-	}
-
-	// move data into a properly tagged struct
-	taggedChirp := myChirp{}
-	taggedChirp.ID = chirp.ID
-	taggedChirp.CreatedAt = chirp.CreatedAt
-	taggedChirp.UpdatedAt = chirp.UpdatedAt
-	taggedChirp.Body = chirp.Body
-	taggedChirp.UserID = chirp.UserID
-
-	jsonChirp, err := json.Marshal(taggedChirp)
+	jsonChirp, err := json.Marshal(chirp)
 	if err != nil {
 		// an error will be thrown if the JSON is invalid or has the wrong types
 		// any missing fields will simply have their values in the struct set to their zero value
