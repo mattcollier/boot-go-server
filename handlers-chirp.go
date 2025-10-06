@@ -44,11 +44,11 @@ func (cfg *apiConfig) handleChirps(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type myChirp struct {
-		ID        uuid.UUID
-		CreatedAt time.Time
-		UpdatedAt time.Time
-		Body      string
-		UserID    uuid.NullUUID
+		ID        uuid.UUID     `json:"id"`
+		CreatedAt time.Time     `json:"created_at"`
+		UpdatedAt time.Time     `json:"updated_at"`
+		Body      string        `json:"body"`
+		UserID    uuid.NullUUID `json:"user_id"`
 	}
 
 	// move data into a properly tagged struct
