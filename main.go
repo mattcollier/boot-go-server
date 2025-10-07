@@ -12,6 +12,7 @@ import (
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	"github.com/mattcollier/boot-go-server/internal/auth"
 	"github.com/mattcollier/boot-go-server/internal/database"
 )
 
@@ -62,7 +63,8 @@ func (cfg *apiConfig) resetMetrics(w http.ResponseWriter, r *http.Request) {
 
 func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 	type payload struct {
-		Email string `json:"email"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -78,7 +80,28 @@ func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := cfg.db.CreateUser(r.Context(), p.Email)
+	// TODO: add more stringent password requirements
+	if p.Password == "" {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(400)
+		w.Write([]byte(`{"error":"Password is required"}`))
+		return
+	}
+
+	hashedPassword, err := auth.HashPassword(p.Password)
+
+	if err != nil {
+		log.Printf("Error hashing password: %s", err)
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(500)
+		w.Write([]byte(`{"error":"Something went wrong"}`))
+		return
+	}
+
+	user, err := cfg.db.CreateUser(r.Context(), database.CreateUserParams{
+		Email:          p.Email,
+		HashedPassword: stringToNullString(hashedPassword),
+	})
 	if err != nil {
 
 	}
@@ -129,6 +152,7 @@ func main() {
 	mux.HandleFunc("GET /api/chirps", api.handleGetAllChirps)
 	mux.HandleFunc("GET /api/chirps/{chirp_id}", api.handleGetChirp)
 	mux.HandleFunc("POST /api/users", api.handleCreateUser)
+	mux.HandleFunc("POST /api/login", api.handleLogin)
 	mux.HandleFunc("GET /admin/metrics", api.handleMetrics)
 	mux.HandleFunc("POST /admin/reset", api.resetMetrics)
 
@@ -164,4 +188,12 @@ func cleanMessage(s string) string {
 		}
 	}
 	return strings.Join(rValue, " ")
+}
+
+// stringToNullString is a helper function to convert a string to sql.NullString
+func stringToNullString(s string) sql.NullString {
+	return sql.NullString{
+		String: s,
+		Valid:  s != "", // Valid is true if the string is not empty
+	}
 }
