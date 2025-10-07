@@ -41,8 +41,6 @@ func (cfg *apiConfig) handleGetChirp(w http.ResponseWriter, r *http.Request) {
 	chirpId := r.PathValue("chirp_id")
 	chirpUUID, err := uuid.Parse(chirpId)
 	if err != nil {
-		// an error will be thrown if the JSON is invalid or has the wrong types
-		// any missing fields will simply have their values in the struct set to their zero value
 		log.Printf("Invalid chirp ID: %s", err)
 		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(500)
