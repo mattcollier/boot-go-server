@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/mattcollier/boot-go-server/internal/auth"
 	"github.com/mattcollier/boot-go-server/internal/database"
 )
 
@@ -82,14 +83,29 @@ func (cfg *apiConfig) handleGetChirp(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *apiConfig) handleChirps(w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(500)
+		w.Write([]byte(`{"error":"Invalid Authorization header"}`))
+		return
+	}
+
+	userId, err := auth.ValidateJWT(token, cfg.jwtSecret)
+	if err != nil {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(500)
+		w.Write([]byte(`{"error":"Invalid JWT"}`))
+		return
+	}
+
 	type messageBody struct {
-		Body   string        `json:"body"`
-		UserID uuid.NullUUID `json:"user_id"`
+		Body string `json:"body"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
 	mb := messageBody{}
-	err := decoder.Decode(&mb)
+	err = decoder.Decode(&mb)
 	if err != nil {
 		// an error will be thrown if the JSON is invalid or has the wrong types
 		// any missing fields will simply have their values in the struct set to their zero value
@@ -108,7 +124,7 @@ func (cfg *apiConfig) handleChirps(w http.ResponseWriter, r *http.Request) {
 
 	chirp, err := cfg.db.CreateChirp(r.Context(), database.CreateChirpParams{
 		Body:   mb.Body,
-		UserID: mb.UserID,
+		UserID: uuid.NullUUID{UUID: userId, Valid: true},
 	})
 	if err != nil {
 

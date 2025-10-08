@@ -20,6 +20,7 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
 	platform       string
+	jwtSecret      string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -127,6 +128,11 @@ func main() {
 	const port = "8080"
 	dbURL := os.Getenv("DB_URL")
 
+	jwtSecret := os.Getenv("JWT_TOKEN_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("'JWT_TOKEN_SECRET' env must be set")
+	}
+
 	platform := os.Getenv("PLATFORM")
 	if platform == "" {
 		log.Fatal("'PLATFORM' env must be set")
@@ -139,8 +145,9 @@ func main() {
 	dbQueries := database.New(db)
 
 	api := apiConfig{
-		db:       dbQueries,
-		platform: platform,
+		db:        dbQueries,
+		platform:  platform,
+		jwtSecret: jwtSecret,
 	}
 
 	h := api.middlewareMetricsInc(http.FileServer(http.Dir(filepathRoot)))
