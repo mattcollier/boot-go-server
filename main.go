@@ -2,8 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -12,7 +10,6 @@ import (
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
-	"github.com/mattcollier/boot-go-server/internal/auth"
 	"github.com/mattcollier/boot-go-server/internal/database"
 )
 
@@ -21,105 +18,6 @@ type apiConfig struct {
 	db             *database.Queries
 	platform       string
 	jwtSecret      string
-}
-
-func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cfg.fileserverHits.Add(1)
-		w.Header().Add("Cache-Control", "no-cache")
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (cfg *apiConfig) handleMetrics(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	text := fmt.Sprintf(`
-<html>
-<body>
-	<h1>Welcome, Chirpy Admin</h1>
-	<p>Chirpy has been visited %d times!</p>
-</body>
-</html>`, cfg.fileserverHits.Load())
-	w.Write([]byte(text))
-}
-
-func (cfg *apiConfig) resetMetrics(w http.ResponseWriter, r *http.Request) {
-	if cfg.platform == "dev" {
-		err := cfg.db.DeleteUsers(r.Context())
-		if err != nil {
-			log.Printf("Error deleting users: %s", err)
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(500)
-			w.Write([]byte(`{"error":"Something went wrong"}`))
-			return
-		}
-	}
-	cfg.fileserverHits.Store(0)
-	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	text := fmt.Sprintf("Hits: %d", cfg.fileserverHits.Load())
-	w.Write([]byte(text))
-}
-
-func (cfg *apiConfig) handleCreateUser(w http.ResponseWriter, r *http.Request) {
-	type payload struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
-
-	decoder := json.NewDecoder(r.Body)
-	p := payload{}
-	err := decoder.Decode(&p)
-	if err != nil {
-		// an error will be thrown if the JSON is invalid or has the wrong types
-		// any missing fields will simply have their values in the struct set to their zero value
-		log.Printf("Error decoding message: %s", err)
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(500)
-		w.Write([]byte(`{"error":"Something went wrong"}`))
-		return
-	}
-
-	// TODO: add more stringent password requirements
-	if p.Password == "" {
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(400)
-		w.Write([]byte(`{"error":"Password is required"}`))
-		return
-	}
-
-	hashedPassword, err := auth.HashPassword(p.Password)
-
-	if err != nil {
-		log.Printf("Error hashing password: %s", err)
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(500)
-		w.Write([]byte(`{"error":"Something went wrong"}`))
-		return
-	}
-
-	user, err := cfg.db.CreateUser(r.Context(), database.CreateUserParams{
-		Email:          p.Email,
-		HashedPassword: stringToNullString(hashedPassword),
-	})
-	if err != nil {
-
-	}
-
-	jsonUser, err := json.Marshal(user)
-	if err != nil {
-		// an error will be thrown if the JSON is invalid or has the wrong types
-		// any missing fields will simply have their values in the struct set to their zero value
-		log.Printf("Error decoding message: %s", err)
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(500)
-		w.Write([]byte(`{"error":"Something went wrong"}`))
-		return
-	}
-	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(201)
-	w.Write(jsonUser)
 }
 
 func main() {
