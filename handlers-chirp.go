@@ -86,7 +86,7 @@ func (cfg *apiConfig) handleChirps(w http.ResponseWriter, r *http.Request) {
 	token, err := auth.GetBearerToken(r.Header)
 	if err != nil {
 		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(500)
+		w.WriteHeader(401)
 		w.Write([]byte(`{"error":"Invalid Authorization header"}`))
 		return
 	}
@@ -143,4 +143,73 @@ func (cfg *apiConfig) handleChirps(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(201)
 	w.Write(jsonChirp)
+}
+
+func (cfg *apiConfig) handleDeleteChirps(w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(401)
+		w.Write([]byte(`{"error":"Invalid Authorization header"}`))
+		return
+	}
+
+	userId, err := auth.ValidateJWT(token, cfg.jwtSecret)
+	if err != nil {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(401)
+		w.Write([]byte(`{"error":"Invalid JWT"}`))
+		return
+	}
+
+	chirpUUID, err := uuid.Parse(r.PathValue("chirp_id"))
+	if err != nil {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(404)
+		w.Write([]byte(`{"error":"chirp not found"}`))
+		return
+	}
+
+	chirp, err := cfg.db.GetChirp(r.Context(), chirpUUID)
+
+	if err != nil {
+		if strings.Contains(err.Error(), "no rows in result set") {
+			w.Header().Add("Content-Type", "application/json")
+			w.WriteHeader(404)
+		} else {
+			log.Printf("Database error: %s", err)
+			w.Header().Add("Content-Type", "application/json")
+			w.WriteHeader(500)
+			w.Write([]byte(`{"error":"Something went wrong"}`))
+		}
+
+		return
+	}
+
+	// ensure the chirp is owned by the authenticated user
+	if chirp.UserID.UUID != userId {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(403)
+		return
+	}
+
+	_, err = cfg.db.DeleteChirp(r.Context(), database.DeleteChirpParams{
+		UserID: uuid.NullUUID{UUID: userId, Valid: true},
+		ID:     chirpUUID,
+	})
+	if err != nil {
+		if err.Error() == "sql: no rows in result set" {
+			w.Header().Add("Content-Type", "application/json")
+			w.WriteHeader(404)
+			return
+		}
+		log.Printf("Error deleting chirp: %s", err)
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(500)
+		w.Write([]byte(`{"error":"Something went wrong"}`))
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(204)
 }
