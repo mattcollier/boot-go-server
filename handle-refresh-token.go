@@ -25,7 +25,8 @@ func (cfg *apiConfig) handleRefreshToken(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if refreshToken.ExpiresAt.Before(time.Now()) {
+	// token is expired or has been revoked
+	if refreshToken.ExpiresAt.Before(time.Now()) || refreshToken.RevokedAt.Valid {
 		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(401)
 		return
@@ -44,4 +45,26 @@ func (cfg *apiConfig) handleRefreshToken(w http.ResponseWriter, r *http.Request)
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(200)
 	fmt.Fprintf(w, `{"token":"%s"}`, newToken)
+}
+
+func (cfg *apiConfig) handleRevokeRefreshToken(w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(500)
+		w.Write([]byte(`{"error":"Invalid Authorization header"}`))
+		return
+	}
+
+	err = cfg.db.RevokeRefreshToken(r.Context(), token)
+	if err != nil {
+		log.Printf("Error in RevokeRefreshToken: %s", err)
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(500)
+		w.Write([]byte(`{"error":"Something went wrong"}`))
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(204)
 }

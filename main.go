@@ -161,6 +161,7 @@ func main() {
 	mux.HandleFunc("POST /api/users", api.handleCreateUser)
 	mux.HandleFunc("POST /api/login", api.handleLogin)
 	mux.HandleFunc("POST /api/refresh", api.handleRefreshToken)
+	mux.HandleFunc("POST /api/revoke", api.handleRevokeRefreshToken)
 	mux.HandleFunc("GET /admin/metrics", api.handleMetrics)
 	mux.HandleFunc("POST /admin/reset", api.resetMetrics)
 
