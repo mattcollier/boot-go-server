@@ -94,7 +94,7 @@ func (cfg *apiConfig) handleChirps(w http.ResponseWriter, r *http.Request) {
 	userId, err := auth.ValidateJWT(token, cfg.jwtSecret)
 	if err != nil {
 		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(500)
+		w.WriteHeader(401)
 		w.Write([]byte(`{"error":"Invalid JWT"}`))
 		return
 	}
