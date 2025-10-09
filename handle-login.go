@@ -13,9 +13,8 @@ import (
 
 func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 	type loginDetails struct {
-		Password         string `json:"password"`
-		Email            string `json:"email"`
-		ExpiresInSeconds *int   `json:"expires_in_seconds"` // optional
+		Password string `json:"password"`
+		Email    string `json:"email"`
 	}
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
@@ -27,16 +26,6 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 		w.Write([]byte(`{"error":"Something went wrong"}`))
 		return
-	}
-
-	ttl := time.Duration(time.Hour)
-	if ld.ExpiresInSeconds != nil {
-		// do not allow values greater than an hour
-		if *ld.ExpiresInSeconds <= 0 || *ld.ExpiresInSeconds > 3600 {
-			// use the default
-		} else {
-			ttl = time.Duration(*ld.ExpiresInSeconds) * time.Second
-		}
 	}
 
 	user, err := cfg.db.GetUserByEmail(r.Context(), ld.Email)
@@ -71,7 +60,8 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := auth.MakeJWT(user.ID, cfg.jwtSecret, ttl)
+	jwtTTL := time.Duration(time.Hour)
+	token, err := auth.MakeJWT(user.ID, cfg.jwtSecret, jwtTTL)
 	if err != nil {
 		log.Printf("Error in MakeJWT: %s", err)
 		w.Header().Add("Content-Type", "application/json")
