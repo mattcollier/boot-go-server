@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -12,7 +13,27 @@ import (
 )
 
 func (cfg *apiConfig) handleGetAllChirps(w http.ResponseWriter, r *http.Request) {
-	chirp, err := cfg.db.GetAllChirps(r.Context())
+	queryParams := r.URL.Query()
+	authorId := queryParams.Get("author_id")
+	fmt.Print(authorId)
+
+	var chirps []database.Chirp
+	var err error
+
+	if authorId != "" {
+		authorUUID, errParse := uuid.Parse(authorId)
+		if errParse != nil {
+			w.Header().Add("Content-Type", "application/json")
+			w.WriteHeader(200)
+			// return empty array
+			w.Write([]byte(`[]`))
+			return
+		}
+		chirps, err = cfg.db.GetChirpsByAuthor(r.Context(), uuid.NullUUID{UUID: authorUUID, Valid: true})
+	} else {
+		chirps, err = cfg.db.GetAllChirps(r.Context())
+	}
+
 	if err != nil {
 		// an error will be thrown if the JSON is invalid or has the wrong types
 		// any missing fields will simply have their values in the struct set to their zero value
@@ -23,7 +44,7 @@ func (cfg *apiConfig) handleGetAllChirps(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	jsonChirps, err := json.Marshal(chirp)
+	jsonChirps, err := json.Marshal(chirps)
 	if err != nil {
 		// an error will be thrown if the JSON is invalid or has the wrong types
 		// any missing fields will simply have their values in the struct set to their zero value
