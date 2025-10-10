@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/mattcollier/boot-go-server/internal/auth"
 	"github.com/mattcollier/boot-go-server/internal/database"
 )
 
@@ -17,9 +18,23 @@ type PolkaWebookPayload struct {
 }
 
 func (cfg *apiConfig) handlePolkaWebhook(w http.ResponseWriter, r *http.Request) {
+	apiKey, err := auth.GetAPIKey(r.Header)
+	if err != nil {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(401)
+		w.Write([]byte(`{"error":"Invalid Authorization header"}`))
+		return
+	}
+
+	if apiKey != cfg.polkaAPIKey {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(401)
+		return
+	}
+
 	decoder := json.NewDecoder(r.Body)
 	polkaWebookPayload := PolkaWebookPayload{}
-	err := decoder.Decode(&polkaWebookPayload)
+	err = decoder.Decode(&polkaWebookPayload)
 	if err != nil {
 		log.Printf("Error decoding message: %s", err)
 		w.Header().Add("Content-Type", "application/json")

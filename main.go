@@ -18,6 +18,7 @@ type apiConfig struct {
 	db             *database.Queries
 	platform       string
 	jwtSecret      string
+	polkaAPIKey    string
 }
 
 func main() {
@@ -36,6 +37,11 @@ func main() {
 		log.Fatal("'PLATFORM' env must be set")
 	}
 
+	polkaAPIKey := os.Getenv("POLKA_KEY")
+	if polkaAPIKey == "" {
+		log.Fatal("'POLKA_KEY' env must be set")
+	}
+
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatal("database connection error")
@@ -43,9 +49,10 @@ func main() {
 	dbQueries := database.New(db)
 
 	api := apiConfig{
-		db:        dbQueries,
-		platform:  platform,
-		jwtSecret: jwtSecret,
+		db:          dbQueries,
+		platform:    platform,
+		jwtSecret:   jwtSecret,
+		polkaAPIKey: polkaAPIKey,
 	}
 
 	h := api.middlewareMetricsInc(http.FileServer(http.Dir(filepathRoot)))
