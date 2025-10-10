@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/google/uuid"
@@ -42,6 +43,14 @@ func (cfg *apiConfig) handleGetAllChirps(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(500)
 		w.Write([]byte(`{"error":"Something went wrong"}`))
 		return
+	}
+
+	sortOrder := queryParams.Get("sort")
+	// only need to deal with desc case because chirps is already in asc order
+	if sortOrder == "desc" {
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].CreatedAt.After(chirps[j].CreatedAt)
+		})
 	}
 
 	jsonChirps, err := json.Marshal(chirps)
